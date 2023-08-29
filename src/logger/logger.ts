@@ -42,10 +42,3 @@ const createLogger = () =>
     })
 
 export const logger = createLogger()
-
-if (env === 'development') {
-    logger.format = combine(
-        logger.format,
-        colorize()
-    )
-}

@@ -2,7 +2,7 @@
   "name": "chatgptbot",
   "version": "1.0.0",
   "scripts": {
-    "start": "NODE_ENV=development ts-node src/index.ts",
+    "start": "ts-node src/index.ts",
     "build": "tsc"
   },
   "license": "ISC",
