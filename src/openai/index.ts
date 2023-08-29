@@ -15,7 +15,7 @@ export async function chatWithChatGPT(requestMessage: string, telegramId: number
         model: OPENAI_MODEL,
     })
     logger.info({ prefix: `Response message for user ${telegramId}:`, message: completion.choices })
-
+    
     completion.choices.forEach(choice => {
         if (choice.message.content) {
             onResponse(choice.message.content)

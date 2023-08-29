@@ -1,6 +1,5 @@
 import winston from 'winston'
 
-const env = process.env.NODE_ENV || 'production'
 const {
     combine,
     timestamp,
