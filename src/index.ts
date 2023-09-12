@@ -4,7 +4,7 @@ import { logger } from './logger/logger'
 import { chatWithChatGPT } from './openai'
 import { BOT_TOKEN, TELEGRAM_ID_WHITELIST } from './constants'
 
-const telegramIdWhiteList = TELEGRAM_ID_WHITELIST.split(',').map(Number)
+const telegramIdWhiteList = TELEGRAM_ID_WHITELIST ? TELEGRAM_ID_WHITELIST.split(',') : []
 const allowedForAll = TELEGRAM_ID_WHITELIST.length < 1
 
 const bot = new Bot(BOT_TOKEN)
@@ -17,7 +17,7 @@ bot.use(async (ctx, next) => {
         return
     }
 
-    if (telegramId && telegramIdWhiteList.includes(telegramId)) {
+    if (telegramId && telegramIdWhiteList.includes(telegramId.toString())) {
         await next()
         return
     }
