@@ -3,12 +3,31 @@ import { Bot, GrammyError, HttpError } from 'grammy'
 import { logger } from './logger/logger'
 import { chatWithChatGPT } from './openai'
 import { BOT_TOKEN, TELEGRAM_ID_WHITELIST } from './constants'
-import {stat} from "./stats/stats";
+import { stat } from "./stats/stats";
 
 const telegramIdWhiteList = TELEGRAM_ID_WHITELIST ? TELEGRAM_ID_WHITELIST.split(',') : []
 const allowedForAll = TELEGRAM_ID_WHITELIST.length < 1
 
 const bot = new Bot(BOT_TOKEN)
+
+bot.use(async (ctx, next) => {
+    const telegramId = ctx.from?.id
+
+    if (allowedForAll) {
+        await next()
+        return
+    }
+
+    if (telegramId && telegramIdWhiteList.includes(telegramId.toString())) {
+        await next()
+        return
+    }
+
+    logger.info({
+        prefix: 'Someone tried to get access to bot',
+        message: ctx.from,
+    })
+})
 
 bot.use(async (ctx, next) => {
     const message = ctx.message?.text
@@ -30,26 +49,7 @@ bot.use(async (ctx, next) => {
     await next()
 })
 
-bot.use(async (ctx, next) => {
-    const telegramId = ctx.from?.id
-
-    if (allowedForAll) {
-        await next()
-        return
-    }
-
-    if (telegramId && telegramIdWhiteList.includes(telegramId.toString())) {
-        await next()
-        return
-    }
-
-    logger.info({
-        prefix: 'Someone tried to get access to bot',
-        message: ctx.from,
-    })
-})
-
-bot.on('message', (ctx) => {
+bot.on('message', async (ctx) => {
     const telegramId = ctx.from.id
     const message = ctx.msg.text
     if (!message) {
@@ -57,7 +57,7 @@ bot.on('message', (ctx) => {
             prefix: `Ignoring request message from user ${telegramId}`,
             message: ctx.msg,
         })
-        ctx.reply('К сожалению, я умею обрабатывать только текстовые запросы', {
+        await ctx.reply('К сожалению, я умею обрабатывать только текстовые запросы :(', {
             reply_to_message_id: ctx.msg.message_id,
         })
         return
@@ -66,12 +66,23 @@ bot.on('message', (ctx) => {
 
     stat.increaseTotalRequestAmount()
 
-    chatWithChatGPT(message, telegramId, async (incoming) =>
-        ctx.reply(incoming, { reply_to_message_id: ctx.msg.message_id }).catch(error => {
-            logger.error({ prefix: 'Error during sending message:', message: error })
-        }).finally(() => {
-            stat.increaseAnsweredRequestAmount()
-        })
+    const dummyMessage = await ctx.reply('Вычисляю... 🤖', {
+        reply_to_message_id: ctx.msg.message_id
+    })
+
+    await chatWithChatGPT(message, telegramId, async (incoming) => {
+            // @ts-ignore
+            await ctx.editMessageText(incoming, { message_id: dummyMessage.message_id })
+                .catch(async error => {
+                    // @ts-ignore
+                    await ctx.editMessageText('⚠️ Возникла ошибка. Попробуйте еще раз', { message_id: dummyMessage.message_id })
+
+                    logger.error({prefix: 'Error during sending message:', message: error})
+                })
+                .finally(() => {
+                    stat.increaseAnsweredRequestAmount()
+                })
+        }
     )
 })
 
