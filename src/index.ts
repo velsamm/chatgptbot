@@ -3,11 +3,32 @@ import { Bot, GrammyError, HttpError } from 'grammy'
 import { logger } from './logger/logger'
 import { chatWithChatGPT } from './openai'
 import { BOT_TOKEN, TELEGRAM_ID_WHITELIST } from './constants'
+import {stat} from "./stats/stats";
 
 const telegramIdWhiteList = TELEGRAM_ID_WHITELIST ? TELEGRAM_ID_WHITELIST.split(',') : []
 const allowedForAll = TELEGRAM_ID_WHITELIST.length < 1
 
 const bot = new Bot(BOT_TOKEN)
+
+bot.use(async (ctx, next) => {
+    const message = ctx.message?.text
+
+    if (message === '/status') {
+        const { answeredRequestAmount, totalRequestAmount } = stat
+        const message = [
+            `Данные по текущей сессии:\n`,
+            `*Всего запросов:* ${totalRequestAmount}\n`,
+            `*Отвечено запросов:* ${answeredRequestAmount}\n`,
+            `*Запросы в ожидании:* ${totalRequestAmount - answeredRequestAmount}`,
+        ].join('')
+
+        await ctx.reply(message, { parse_mode: 'Markdown' })
+
+        return
+    }
+
+    await next()
+})
 
 bot.use(async (ctx, next) => {
     const telegramId = ctx.from?.id
@@ -43,8 +64,14 @@ bot.on('message', (ctx) => {
     }
     logger.info({ message, prefix: `Request message from user ${telegramId}:` })
 
+    stat.increaseTotalRequestAmount()
+
     chatWithChatGPT(message, telegramId, async (incoming) =>
-        ctx.reply(incoming, { reply_to_message_id: ctx.msg.message_id })
+        ctx.reply(incoming, { reply_to_message_id: ctx.msg.message_id }).catch(error => {
+            logger.error({ prefix: 'Error during sending message:', message: error })
+        }).finally(() => {
+            stat.increaseAnsweredRequestAmount()
+        })
     )
 })
 
