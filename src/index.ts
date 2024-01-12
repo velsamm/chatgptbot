@@ -70,9 +70,9 @@ bot.on('message', async (ctx) => {
         reply_to_message_id: ctx.msg.message_id
     })
 
-    await chatWithChatGPT(message, telegramId, async (incoming) => {
+    chatWithChatGPT(message, telegramId, async (incoming) => {
             // @ts-ignore
-            await ctx.editMessageText(incoming, { message_id: dummyMessage.message_id })
+            ctx.editMessageText(incoming, { message_id: dummyMessage.message_id })
                 .catch(async error => {
                     // @ts-ignore
                     await ctx.editMessageText('⚠️ Возникла ошибка. Попробуйте еще раз', { message_id: dummyMessage.message_id })
