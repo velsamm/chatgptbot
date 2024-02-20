@@ -33,14 +33,21 @@ bot.use(async (ctx, next) => {
     const message = ctx.message?.text
 
     if (message === '/status') {
-        const { answeredRequestAmount, totalRequestAmount, failedRequestAmount } = stat
-        const message = [
+        const { answeredRequestAmount, totalRequestAmount, failedRequestAmount, requestMap } = stat
+        const commonStatMessage = [
             `Данные по текущей сессии:\n`,
             `*Всего запросов:* ${totalRequestAmount}\n`,
             `*Отвечено запросов:* ${answeredRequestAmount}\n`,
             `*Отвалилось запросов:* ${failedRequestAmount}\n`,
             `*Запросы в ожидании:* ${totalRequestAmount - answeredRequestAmount}`,
         ].join('')
+
+        let requestMapMessage = '*Telegram ID* - Количество запросов\n'
+        requestMap.forEach((value, key) => {
+            requestMapMessage += `*${key}* - ${value} \n`
+        })
+
+        const message = commonStatMessage + '\n\n\n' + requestMapMessage
 
         await ctx.reply(message, { parse_mode: 'Markdown' })
 
@@ -66,6 +73,7 @@ bot.on('message', async (ctx) => {
     logger.info({ message, prefix: `Request message from user ${telegramId}:` })
 
     stat.increaseTotalRequestAmount()
+    stat.increaseRequestMapCounter(telegramId)
 
     const dummyMessage = await ctx.reply('Вычисляю... 🤖', {
         reply_to_message_id: ctx.msg.message_id
