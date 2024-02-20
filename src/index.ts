@@ -33,11 +33,12 @@ bot.use(async (ctx, next) => {
     const message = ctx.message?.text
 
     if (message === '/status') {
-        const { answeredRequestAmount, totalRequestAmount } = stat
+        const { answeredRequestAmount, totalRequestAmount, failedRequestAmount } = stat
         const message = [
             `Данные по текущей сессии:\n`,
             `*Всего запросов:* ${totalRequestAmount}\n`,
             `*Отвечено запросов:* ${answeredRequestAmount}\n`,
+            `*Отвалилось запросов:* ${failedRequestAmount}\n`,
             `*Запросы в ожидании:* ${totalRequestAmount - answeredRequestAmount}`,
         ].join('')
 
@@ -73,14 +74,15 @@ bot.on('message', async (ctx) => {
     chatWithChatGPT(message, telegramId, async (incoming) => {
             // @ts-ignore
             ctx.editMessageText(incoming, { message_id: dummyMessage.message_id })
+                .then(() => {
+                    stat.increaseAnsweredRequestAmount()
+                })
                 .catch(async error => {
+                    stat.increaseFailedRequestAmount()
                     // @ts-ignore
                     await ctx.editMessageText('⚠️ Возникла ошибка. Попробуйте еще раз', { message_id: dummyMessage.message_id })
 
                     logger.error({prefix: 'Error during sending message:', message: error})
-                })
-                .finally(() => {
-                    stat.increaseAnsweredRequestAmount()
                 })
         }
     )
