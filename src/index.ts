@@ -1,10 +1,9 @@
-import { Bot, GrammyError, HttpError } from 'grammy'
+import { Bot, GrammyError, HttpError, InputFile } from 'grammy'
 
 import { logger } from './logger/logger'
 import { chatWithChatGPT } from './openai'
 import { BOT_TOKEN, TELEGRAM_ID_WHITELIST } from './constants'
 import { stat } from "./stats/stats";
-import { InputFile } from "grammy/out/types.node";
 
 const telegramIdWhiteList = TELEGRAM_ID_WHITELIST ? TELEGRAM_ID_WHITELIST.split(',') : []
 const allowedForAll = TELEGRAM_ID_WHITELIST.length < 1
