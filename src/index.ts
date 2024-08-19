@@ -4,6 +4,7 @@ import { logger } from './logger/logger'
 import { chatWithChatGPT } from './openai'
 import { BOT_TOKEN, TELEGRAM_ID_WHITELIST } from './constants'
 import { stat } from "./stats/stats";
+import { InputFile } from "grammy/out/types.node";
 
 const telegramIdWhiteList = TELEGRAM_ID_WHITELIST ? TELEGRAM_ID_WHITELIST.split(',') : []
 const allowedForAll = TELEGRAM_ID_WHITELIST.length < 1
@@ -39,7 +40,7 @@ bot.use(async (ctx, next) => {
             `*Всего запросов:* ${totalRequestAmount}\n`,
             `*Отвечено запросов:* ${answeredRequestAmount}\n`,
             `*Отвалилось запросов:* ${failedRequestAmount}\n`,
-            `*Запросы в ожидании:* ${totalRequestAmount - answeredRequestAmount}`,
+            `*Запросы в ожидании:* ${totalRequestAmount - answeredRequestAmount - failedRequestAmount}`,
         ].join('')
 
         let requestMapMessage = '*Telegram ID* - Количество запросов\n'
@@ -80,20 +81,35 @@ bot.on('message', async (ctx) => {
     })
 
     chatWithChatGPT(message, telegramId, async (incoming) => {
+        if (incoming.length > 4096) {
+            const uint8Array = new TextEncoder().encode(incoming)
+            ctx.replyWithDocument(new InputFile(uint8Array, 'gpt_response.md'), {
+                message_thread_id: dummyMessage.message_id
+            }).then(() => {
+                stat.increaseAnsweredRequestAmount()
+            })
+              .catch(async error => {
+                  stat.increaseFailedRequestAmount();
+                  // @ts-ignore
+                  await ctx.editMessageText('⚠️ Возникла ошибка. Попробуйте еще раз', { message_id: dummyMessage.message_id })
+
+                  logger.error({prefix: 'Error during sending message:', message: error})
+              })
+        } else {
             // @ts-ignore
             ctx.editMessageText(incoming, { message_id: dummyMessage.message_id })
-                .then(() => {
-                    stat.increaseAnsweredRequestAmount()
-                })
-                .catch(async error => {
-                    stat.increaseFailedRequestAmount()
-                    // @ts-ignore
-                    await ctx.editMessageText('⚠️ Возникла ошибка. Попробуйте еще раз', { message_id: dummyMessage.message_id })
+              .then(() => {
+                  stat.increaseAnsweredRequestAmount()
+              })
+              .catch(async error => {
+                  stat.increaseFailedRequestAmount();
+                  // @ts-ignore
+                  await ctx.editMessageText('⚠️ Возникла ошибка. Попробуйте еще раз', { message_id: dummyMessage.message_id })
 
-                    logger.error({prefix: 'Error during sending message:', message: error})
-                })
+                  logger.error({prefix: 'Error during sending message:', message: error})
+              })
         }
-    )
+    })
 })
 
 bot.catch((err) => {
