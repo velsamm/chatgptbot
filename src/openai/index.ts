@@ -1,9 +1,6 @@
 import OpenAI from 'openai'
-import { OPENAI_API_KEY } from '../constants'
+import { OPENAI_API_KEY, OPENAI_MODEL, OPENAI_ROLE } from '../constants'
 import { logger } from '../logger/logger'
-
-const OPENAI_MODEL = 'gpt-3.5-turbo'
-const OPENAI_ROLE = 'user'
 
 const openai = new OpenAI({
     apiKey: OPENAI_API_KEY,

@@ -2,7 +2,7 @@ import { Bot, GrammyError, HttpError, InputFile } from 'grammy'
 
 import { logger } from './logger/logger'
 import { chatWithChatGPT } from './openai'
-import { BOT_TOKEN, TELEGRAM_ID_WHITELIST } from './constants'
+import { BOT_TOKEN, OPENAI_MODEL, TELEGRAM_ID_WHITELIST } from './constants'
 import { stat } from "./stats/stats";
 
 const telegramIdWhiteList = TELEGRAM_ID_WHITELIST ? TELEGRAM_ID_WHITELIST.split(',') : []
@@ -35,6 +35,7 @@ bot.use(async (ctx, next) => {
     if (message === '/status') {
         const { answeredRequestAmount, totalRequestAmount, failedRequestAmount, requestMap } = stat
         const commonStatMessage = [
+            `*Модель:* ${OPENAI_MODEL}\n\n`,
             `Данные по текущей сессии:\n`,
             `*Всего запросов:* ${totalRequestAmount}\n`,
             `*Отвечено запросов:* ${answeredRequestAmount}\n`,
